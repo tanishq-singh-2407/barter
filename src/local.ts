@@ -1,5 +1,9 @@
 import { handler } from './index';
 
 (async () => {
-    console.log(await handler());
+    const event: any = {
+        body: "j"
+    }
+
+    console.log(await handler(event));
 })();
