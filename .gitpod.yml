@@ -8,3 +8,6 @@ tasks:
 
   - name: Setup Trigger
     init: cd trigger && deno cache deps.ts
+
+  - name: Setup Getter
+    init: cd getter && deno cache deps.ts
