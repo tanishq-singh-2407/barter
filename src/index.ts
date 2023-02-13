@@ -1,4 +1,4 @@
-import { APIGatewayProxyResult } from "aws-lambda";
+import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import chromium from 'chrome-aws-lambda';
 import aws from 'aws-sdk';
 import { Browser } from "puppeteer-core";
@@ -6,9 +6,11 @@ import { Browser } from "puppeteer-core";
 const url = "https://api.ipify.org";
 const isDev = process.env.dev === "true";
 
-export const handler = async (): Promise<APIGatewayProxyResult> => {
+export const handler = async ({ body }: APIGatewayEvent): Promise<APIGatewayProxyResult> => {
     let response: APIGatewayProxyResult;
     let browser: Browser;
+
+    const startTime = Date.now();
 
     if (isDev) {
         const puppeteer = require('puppeteer');
@@ -41,19 +43,18 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
         await page.goto(url, { waitUntil: "domcontentloaded" });
 
         const ip = await page.$eval('body', el => el.textContent);
+        const responseTime = Date.now() - startTime;
 
         response = {
             statusCode: 200,
-            body: JSON.stringify({
-                ip
-            })
+            body: JSON.stringify({ ip, responseTime })
         }
     } catch (error) {
+        const responseTime = Date.now() - startTime;
+
         response = {
             statusCode: 400,
-            body: JSON.stringify({
-                error: error.message
-            })
+            body: JSON.stringify({ error: error.message, responseTime })
         }
     } finally {
         await page.close();
