@@ -1,15 +1,15 @@
 {
-    "name": "aws-lambda-proxy-scraping",
+    "name": "barter",
     "version": "1.0.0",
     "main": "index.js",
-    "repository": "https://github.com/tanishq-singh-2301/aws-lambda-proxy-scraping.git",
+    "repository": "https://github.com/tanishq-singh-2301/barter.git",
     "author": "Tanishq Singh <tanishqsingh640@gmail.com>",
     "license": "MIT",
     "scripts": {
         "build": "yarn run clean && tsc",
-        "zip": "yarn run build && zip -r aws-lambda-proxy-scraping.zip dist/ node_modules/",
-        "deploy": "yarn run zip && aws s3 cp aws-lambda-proxy-scraping.zip s3://kaju-lambdas-test && yarn run clean && aws lambda update-function-code --function-name aws-lambda-proxy-scraping --s3-bucket kaju-lambdas-test --s3-key aws-lambda-proxy-scraping.zip --output text",
-        "clean": "rm -rf aws-lambda-proxy-scraping.zip dist",
+        "zip": "yarn run build && zip -r barter.zip dist/ node_modules/",
+        "deploy": "yarn run zip && aws s3 cp barter.zip s3://kaju-lambdas-test && yarn run clean && aws lambda update-function-code --function-name barter --s3-bucket kaju-lambdas-test --s3-key barter.zip --output text",
+        "clean": "rm -rf barter.zip dist",
         "prepare": "husky install",
         "start": "dev=true npx ts-node src/local.ts"
     },

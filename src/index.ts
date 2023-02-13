@@ -19,7 +19,7 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
         const lambda = new aws.Lambda();
     
         await lambda.updateFunctionConfiguration({
-            FunctionName: "aws-lambda-proxy-scraping",
+            FunctionName: "barter",
             Environment: {
                 Variables: {}
             }
