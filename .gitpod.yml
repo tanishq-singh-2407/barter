@@ -2,6 +2,9 @@ image:
   file: .gitpod.Dockerfile
 
 tasks:
-  - name: Setup
+  - name: Setup Puppeteer
     init: yarn install && npm i -g puppeteer
     command: yarn start
+
+  - name: Setup Trigger
+    init: cd trigger && deno cache deps.ts
