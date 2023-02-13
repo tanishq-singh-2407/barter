@@ -3,5 +3,5 @@ image:
 
 tasks:
   - name: Setup
-    init: yarn install
+    init: yarn install && npm i -g puppeteer
     command: yarn start
