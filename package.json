@@ -1,0 +1,29 @@
+{
+    "name": "aws-lambda-proxy-scraping",
+    "version": "1.0.0",
+    "main": "index.js",
+    "repository": "https://github.com/tanishq-singh-2301/aws-lambda-proxy-scraping.git",
+    "author": "Tanishq Singh <tanishqsingh640@gmail.com>",
+    "license": "MIT",
+    "scripts": {
+        "build": "yarn run clean && tsc",
+        "zip": "yarn run build && zip -r aws-lambda-proxy-scraping.zip dist/ node_modules/",
+        "deploy": "yarn run zip && aws s3 cp aws-lambda-proxy-scraping.zip s3://kaju-lambdas-test && yarn run clean && aws lambda update-function-code --function-name aws-lambda-proxy-scraping --s3-bucket kaju-lambdas-test --s3-key aws-lambda-proxy-scraping.zip --output text",
+        "clean": "rm -rf aws-lambda-proxy-scraping.zip dist",
+        "prepare": "husky install",
+        "start": "dev=true npx ts-node src/local.ts"
+    },
+    "dependencies": {
+        "aws-sdk": "^2.1313.0",
+        "chrome-aws-lambda": "^10.1.0",
+        "puppeteer-core": "11.0.0"
+    },
+    "devDependencies": {
+        "@types/aws-lambda": "^8.10.110",
+        "@types/node": "^18.13.0",
+        "husky": "^8.0.3",
+        "puppeteer": "^19.6.3",
+        "ts-node": "^10.9.1",
+        "typescript": "^4.9.5"
+    }
+}
