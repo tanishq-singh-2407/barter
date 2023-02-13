@@ -8,36 +8,51 @@ const seed = Deno.env.get("WALLET_SEED");
 
 if (!seed) throw new Error("Provide Credentials.");
 
-const getter = async (from: number, till = from + 1) => {
-    if (from >= till) Deno.exit();
+type Account = {
+    accountIndex: number;
+    private_key: string;
+    address: string;
+}
+
+let accounts_: Account[] = []
+
+const getter_accounts = (from: number, till = from + 1): Account[] => {
+    if (from >= till) return accounts_;
 
     const private_key = deriveSecretKey(seed, from);
     const public_key = derivePublicKey(private_key);
     const address = deriveAddress(public_key, { useNanoPrefix: true });
 
-    const { blocks } = await get_pending_blocks(address);
-    
-    for (let i = 0; i < blocks.length; i++) {
-        console.log(`Account Index: ${from}, Block Number: ${i + 1}/${blocks.length}`);
-        
-        const pendingBlockHash = blocks[i];
-        const { error, hash: receivePendingBlockHash } = await receive_pending_block(private_key, pendingBlockHash);
+    accounts_.push({ accountIndex: from, private_key, address });
 
-        console.log({ accountIndex: from, pendingBlockHash, receivePendingBlockHash, error });
-    }
-
-    const { balance } = await get_account_balance(address);
-    const xno = raw_to_xno(balance);
-
-    if (parseFloat(xno) > 0) {
-        const { error, hash: sendXNOBlockHash } = await send_xno(private_key, iPhoneAddress, xno);
-
-        if (error) console.log(error);
-            
-        console.log({ accountIndex: from, sendXNOBlockHash });
-    }
-
-    await getter(from + 1, till);
+    return getter_accounts(from + 1, till);
 }
 
-await getter(10, 60);
+const getter = async (from: number, shift: number) => {
+    accounts_ = []
+    const accounts = getter_accounts(from, from + shift);
+    
+    const pending_blocks = await Promise.all(
+        accounts.map(async ({ address, private_key, accountIndex }) => {return{ private_key, accountIndex, blocks: (await get_pending_blocks(address)).blocks }})
+    );
+        
+    console.log(pending_blocks);
+    
+    const received_block_hashes = await Promise.all(
+        pending_blocks.map(
+            async ({ blocks, private_key, accountIndex }) => {
+                const results: { error?: string; hash?: string; }[] = [];
+
+                for (let i = 0; i < blocks.length; i++)
+                    results.push(await receive_pending_block(private_key, blocks[i]));
+
+                return { accountIndex, done: results.length / blocks.length ,results };
+            }
+        )
+    );
+    
+    console.log(received_block_hashes);
+    await getter(from + shift, shift);
+}
+
+await getter(0, 100);
