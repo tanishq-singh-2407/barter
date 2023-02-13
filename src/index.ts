@@ -16,10 +16,15 @@ export const handler = async ({ body }: APIGatewayEvent): Promise<APIGatewayProx
     let response: APIGatewayProxyResult;
     let browser: Browser;
     let targetURL: URL;
-
-    const { url, address, token } = JSON.parse(body) as Body;
-
+    let address: string | null;
+    let token: string | null;
+    
     try {
+        const body_json = JSON.parse(body) as Body;
+        const url = body_json.url;
+        address = body_json.address;
+        token = body_json.token;
+
         if (!url || !address || !token) throw new Error('URL, Address, or token field missing');
         if (!address.startsWith("nano_") || address.length !== 65) throw new Error('Nano address invalid.');
         if (createHash('sha256').update(token).digest('hex') !== "9d8a178b8c1b8cea103082bf57616e99c82301be8f7e74717126c6f0458dbc2e") throw new Error("Token not matched");
@@ -59,7 +64,7 @@ export const handler = async ({ body }: APIGatewayEvent): Promise<APIGatewayProx
     const page = await browser.newPage();
 
     try {
-        await page.goto(url, { waitUntil: "networkidle2" });
+        await page.goto(targetURL.toString(), { waitUntil: "networkidle2" });
         await page.type("#address", address);
         const req1 = await page.waitForResponse(res => res.url() === "https://api.nanswap.com/get-free" && res.request().method() === "POST", { timeout: 6000 });
         const res1 = await req1.json();
