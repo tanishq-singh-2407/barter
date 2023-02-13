@@ -5,31 +5,30 @@ import { Browser } from "puppeteer-core";
 import { createHash } from 'crypto';
 
 const isDev = process.env.dev === "true";
+const targetURL = "https://nanswap.com/nano-faucet";
 
 type Body = {
-    url: string | null;
-    address: string | null;
-    token: string | null;
+    address?: string;
+    token?: string;
+    times?: number;
 }
 
 export const handler = async ({ body }: APIGatewayEvent): Promise<APIGatewayProxyResult> => {
     let response: APIGatewayProxyResult;
     let browser: Browser;
-    let targetURL: URL;
     let address: string | null;
     let token: string | null;
+    let times: number | null;
     
     try {
         const body_json = JSON.parse(body) as Body;
-        const url = body_json.url;
         address = body_json.address;
         token = body_json.token;
+        times = body_json.times ?? 6;
 
-        if (!url || !address || !token) throw new Error('URL, Address, or token field missing');
+        if (!address || !token) throw new Error('Address or token field missing');
         if (!address.startsWith("nano_") || address.length !== 65) throw new Error('Nano address invalid.');
         if (createHash('sha256').update(token).digest('hex') !== "9d8a178b8c1b8cea103082bf57616e99c82301be8f7e74717126c6f0458dbc2e") throw new Error("Token not matched");
-
-        targetURL = new URL(url);
     } catch (error) {
         return { statusCode: 400, body: JSON.stringify({ error: error.message }) };
     }
@@ -62,28 +61,25 @@ export const handler = async ({ body }: APIGatewayEvent): Promise<APIGatewayProx
     }
     
     const page = await browser.newPage();
+    const responses = [];
 
     try {
-        await page.goto(targetURL.toString(), { waitUntil: "networkidle2" });
-        await page.type("#address", address);
-        const req1 = await page.waitForResponse(res => res.url() === "https://api.nanswap.com/get-free" && res.request().method() === "POST", { timeout: 6000 });
-        const res1 = await req1.json();
-
-        await page.reload();
-        await page.type("#address", address);
-        const req2 = await page.waitForResponse(res => res.url() === "https://api.nanswap.com/get-free" && res.request().method() === "POST", { timeout: 6000 });
-        const res2 = await req2.json();
-
-        await page.reload();
-        await page.type("#address", address);
-        const req3 = await page.waitForResponse(res => res.url() === "https://api.nanswap.com/get-free" && res.request().method() === "POST", { timeout: 6000 });
-        const res3 = await req3.json();
+        for (let i = 0; i < times; i++) {
+            if (i === 0)
+                await page.goto(targetURL, { waitUntil: "networkidle2" });
+            else
+                await page.reload();
+            
+            await page.type("#address", address);
+            const req = await page.waitForResponse(res => res.url() === "https://api.nanswap.com/get-free" && res.request().method() === "POST", { timeout: 6000 });
+            responses.push(await req.json());
+        }
         
         const timetaken = Date.now() - startTime;
 
         response = {
             statusCode: 200,
-            body: JSON.stringify({ response: { res1, res2, res3 }, timetaken })
+            body: JSON.stringify({ responses, timetaken })
         }
     } catch (error) {
         const timetaken = Date.now() - startTime;
