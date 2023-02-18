@@ -18,7 +18,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Installing packages
         run: yarn install
@@ -36,5 +36,5 @@ jobs:
 
       - name: Update and Deploy Code
         run: |
-            aws s3 cp barter.zip s3://kaju-lambdas-test
-            aws lambda update-function-code --function-name barter --s3-bucket kaju-lambdas-test --s3-key barter.zip --output text
+            aws s3 cp barter.zip s3://kaju-barter
+            aws lambda update-function-code --function-name barter --s3-bucket kaju-barter --s3-key barter.zip --output text
