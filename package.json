@@ -14,6 +14,7 @@
         "start": "dev=true npx ts-node src/local.ts"
     },
     "dependencies": {
+        "@tanishq-singh/nanojs": "^0.1.3",
         "aws-sdk": "^2.1313.0",
         "chrome-aws-lambda": "^10.1.0",
         "puppeteer-core": "11.0.0"

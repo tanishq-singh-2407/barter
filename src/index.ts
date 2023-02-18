@@ -1,4 +1,5 @@
 import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
+import { get_account_keys, Account, receive_pending_block } from '@tanishq-singh/nanojs';
 import chromium from 'chrome-aws-lambda';
 import aws from 'aws-sdk';
 import { Browser } from "puppeteer-core";
@@ -7,27 +8,44 @@ import { createHash } from 'crypto';
 const isDev = process.env.dev === "true";
 const targetURL = "https://nanswap.com/nano-faucet";
 
-type Body = {
-    address?: string;
+export type Body = {
+    private_key?: string;
     token?: string;
     times?: number;
+}
+
+export type NanoSwapResponse = {
+    amountSent: number;
+    address: string;
+    ticker: string;
+    executionTime: number;
+    hash: string;
+} | { error: string; };
+
+export type ResponseError = {
+    error: string;
+    hash: string;
+}
+
+export type ResponseBody = {
+    timetaken: number;
+    errors: ResponseError[];
+    nanoSwapResponses: NanoSwapResponse[];
 }
 
 export const handler = async ({ body }: APIGatewayEvent): Promise<APIGatewayProxyResult> => {
     let response: APIGatewayProxyResult;
     let browser: Browser;
-    let address: string | null;
+    let account: Account;
     let token: string | null;
     let times: number | null;
     
     try {
         const body_json = JSON.parse(body) as Body;
-        address = body_json.address;
+        account = { ...get_account_keys(body_json.private_key), index: 0 };
         token = body_json.token;
-        times = body_json.times ?? 6;
+        times = body_json.times ?? 5;
 
-        if (!address || !token) throw new Error('Address or token field missing');
-        if (!address.startsWith("nano_") || address.length !== 65) throw new Error('Nano address invalid.');
         if (createHash('sha256').update(token).digest('hex') !== "9d8a178b8c1b8cea103082bf57616e99c82301be8f7e74717126c6f0458dbc2e") throw new Error("Token not matched");
     } catch (error) {
         return { statusCode: 400, body: JSON.stringify({ error: error.message }) };
@@ -61,7 +79,7 @@ export const handler = async ({ body }: APIGatewayEvent): Promise<APIGatewayProx
     }
     
     const page = await browser.newPage();
-    const responses = [];
+    const nanoSwapResponses: NanoSwapResponse[] = [];
 
     try {
         for (let i = 0; i < times; i++) {
@@ -70,16 +88,29 @@ export const handler = async ({ body }: APIGatewayEvent): Promise<APIGatewayProx
             else
                 await page.reload();
             
-            await page.type("#address", address);
+            await page.type("#address", account.address);
             const req = await page.waitForResponse(res => res.url() === "https://api.nanswap.com/get-free" && res.request().method() === "POST", { timeout: 6000 });
-            responses.push(await req.json());
+            nanoSwapResponses.push(await req.json() as NanoSwapResponse);
+        }
+        
+        const errors = [];
+        
+        for (let i = 0; i < nanoSwapResponses.length; i++) {
+            const res = nanoSwapResponses[i];
+            
+            if (!('error' in res)) {
+                const { error } = await receive_pending_block(account.private_key, res.hash);
+
+                if (error)
+                    errors.push({ error, hash: res.hash });
+            }
         }
         
         const timetaken = Date.now() - startTime;
 
         response = {
             statusCode: 200,
-            body: JSON.stringify({ responses, timetaken })
+            body: JSON.stringify({ timetaken, errors, nanoSwapResponses })
         }
     } catch (error) {
         const timetaken = Date.now() - startTime;
