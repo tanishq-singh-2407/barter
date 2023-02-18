@@ -16,23 +16,15 @@ type DiscordParams = {
 
 if (!triggerURL || !seed || !token || !discord_webhook) throw new Error("Provide Credentials.");
 
-/**
- * @description Message out to discord
- * @param {DiscordParams} params
- */
 const message = async (params: DiscordParams) => {
     try {
-        await axios.post(discord_webhook, params);
+        await axios.post(discord_webhook, params)
     } catch (error) {
         console.log(error.message);
     }
 }
 
-/**
- * @description Trigger AWS Lambda with new account to barter
- * @param {number} i - Iteration Number (Account Index Number)
- */
-export const barter = async (i: number) => {
+const barter = async (i: number) => {
     console.log("Iteration Number:", i);
 
     const private_key = deriveSecretKey(seed, i);
@@ -53,3 +45,5 @@ export const barter = async (i: number) => {
 
     await barter(i + 1);
 }
+
+await barter(0);

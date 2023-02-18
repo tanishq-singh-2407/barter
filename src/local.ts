@@ -1,8 +1,5 @@
 import { handler } from './index';
 
-/**
- * @description Trigger function locally
- */
 (async () => {
     const event: any = {
         body: JSON.stringify({
