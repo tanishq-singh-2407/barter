@@ -1,17 +1,38 @@
-import { axios, nanocurrency } from './deps.ts';
+import { axios, nanocurrency, nanojs } from './deps.ts';
 import barted from './barted.json' assert { type: "json" };
 
-const { deriveAddress, derivePublicKey, deriveSecretKey } = nanocurrency;
+const { deriveSecretKey, deriveAddress, derivePublicKey } = nanocurrency;
+const { send_xno, get_account_balance } = nanojs;
 
 const triggerURL = Deno.env.get("TRIGGER_URI");
 const seed = Deno.env.get("WALLET_SEED");
 const token = Deno.env.get("TRIGGER_TOKEN");
 const discord_webhook = Deno.env.get("DISCORD_WEBHOOK");
+const receiverAddress = "nano_1t8qn46b8h8qij59nydqgz38d37rz63nhkwe7d7ubzgx15p5igtqrnsm3gqq";
 
-type DiscordParams = {
+export type DiscordParams = {
     username: string;
     avatar_url?: string;
     content: string;
+}
+
+export type NanoSwapResponse = {
+    amountSent: number;
+    address: string;
+    ticker: string;
+    executionTime: number;
+    hash: string;
+} | { error: string; };
+
+export type ResponseError = {
+    error: string;
+    hash: string;
+}
+
+export type ResponseBody = {
+    timetaken: number;
+    errors: ResponseError[];
+    nanoSwapResponses: NanoSwapResponse[];
 }
 
 if (!triggerURL || !seed || !token || !discord_webhook) throw new Error("Provide Credentials.");
@@ -29,7 +50,7 @@ const message = async (params: DiscordParams) => {
 }
 
 /**
- * @description Trigger AWS Lambda with new account to barter
+ * @description Trigger AWS Lambda with new account to bart
  * @param {number} i - Iteration Number (Account Index Number)
  */
 export const barter = async (i: number) => {
@@ -40,8 +61,18 @@ export const barter = async (i: number) => {
     const address = deriveAddress(public_key, { useNanoPrefix: true });
     
     try {
-        const { data } = await axios.post(triggerURL, { times: 5, address, token }, { timeout: 1 * 60 * 1000 });
-        (barted as any).push({ iteration: i, address, private_key, public_key, data });
+        const { data } = await axios.post<ResponseBody>(triggerURL, { times: 5, private_key, token }, { timeout: 1 * 60 * 1000 });
+        let error: string | undefined;
+        let receivedAll = false;
+        
+        if (data.errors.length === 0) {
+            const { balance } = await get_account_balance(address);
+
+            error = (await send_xno(private_key, receiverAddress, balance)).error;
+            receivedAll = true;
+        }
+
+        (barted as any).push({ iteration: i, private_key, data, send: error ? false : true, receivedAll });
         
         await Deno.writeTextFile("barted.json", JSON.stringify(barted, null, 4));
     } catch (error) {

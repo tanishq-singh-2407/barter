@@ -1,5 +1,5 @@
 import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
-import { get_account_keys, Account, receive_pending_block, send_xno } from '@tanishq-singh/nanojs';
+import { get_account_keys, Account, receive_pending_block } from '@tanishq-singh/nanojs';
 import chromium from 'chrome-aws-lambda';
 import aws from 'aws-sdk';
 import { Browser } from "puppeteer-core";
@@ -8,19 +8,30 @@ import { createHash } from 'crypto';
 const isDev = process.env.dev === "true";
 const targetURL = "https://nanswap.com/nano-faucet";
 
-type Body = {
+export type Body = {
     private_key?: string;
     token?: string;
     times?: number;
 }
 
-type NanoSwapResponse = {
+export type NanoSwapResponse = {
     amountSent: number;
     address: string;
     ticker: string;
     executionTime: number;
     hash: string;
 } | { error: string; };
+
+export type ResponseError = {
+    error: string;
+    hash: string;
+}
+
+export type ResponseBody = {
+    timetaken: number;
+    errors: ResponseError[];
+    nanoSwapResponses: NanoSwapResponse[];
+}
 
 export const handler = async ({ body }: APIGatewayEvent): Promise<APIGatewayProxyResult> => {
     let response: APIGatewayProxyResult;
@@ -89,9 +100,9 @@ export const handler = async ({ body }: APIGatewayEvent): Promise<APIGatewayProx
             
             if (!('error' in res)) {
                 const { error } = await receive_pending_block(account.private_key, res.hash);
-                
+
                 if (error)
-                    errors.push({ error, hash: res.hash, private_key: account.private_key });
+                    errors.push({ error, hash: res.hash });
             }
         }
         
